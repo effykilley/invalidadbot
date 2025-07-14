@@ -144,8 +144,7 @@ func handlerSendPhotoByTag(ctx context.Context, tgBot *bot.Bot, update *models.U
 	}
 	defer apiResponse.Body.Close()
 
-	if _, err := tgBot.SendPhoto(ctx, &bot.SendPhotoParams{
-		ChatID: update.Message.Chat.ID,
+	if _, err := tgBot.SendPhoto(ctx, &bot.SendPhotoParams{ChatID: update.Message.Chat.ID,
 		Photo: &models.InputFileUpload{
 			Data: apiResponse.Body,
 		},
@@ -168,76 +167,76 @@ func handlerGroupMessage(ctx context.Context, tgBot *bot.Bot, update *models.Upd
 	// Find all matches in the message
 	matches := twitterRegex.FindAllString(update.Message.Text, -1)
 
-	// Check if the message is from a group chat and contains the specified chat ID
-	if update.Message.Chat.Type == "group" || update.Message.Chat.Type == "supergroup" {
-		// Get the chat ID from the environment variable
-		specifiedChatID := os.Getenv("CENSORED_CHAT_ID")
-		if specifiedChatID == "" {
-			log.Print("SPECIFIED_CHAT_ID environment variable is not set.")
-			return
-		}
-
-		// Check if the chat ID matches the specified chat ID
-		if strconv.FormatInt(update.Message.Chat.ID, 10) == specifiedChatID {
-			// Prepare the JSON payload
-			messagePayload := fmt.Sprintf(`{"message": "%s"}`, update.Message.Text)
-
-			// Send the message to the specified localhost endpoint
-			endpoint := os.Getenv("CUMCEN_ENDPOINT")
-			if !strings.HasPrefix(endpoint, "http://") {
-				endpoint = "http://" + endpoint
-			}
-			resp, err := http.Post(endpoint, "application/json", strings.NewReader(messagePayload))
-			if err != nil {
-				log.Print("Failed to send message to localhost; error: ", err.Error())
-				return
-			}
-			defer resp.Body.Close()
-
-			// Decode the response
-			var response struct {
-				ThreatProbability float64 `json:"threat_probability"`
-			}
-			if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-				log.Print("Failed to decode response; error: ", err.Error())
-				return
-			}
-
-			// Check the threat probability
-			threshold, _ := strconv.ParseFloat(os.Getenv("THREAT_THRESHOLD"), 64)
-			if response.ThreatProbability >= threshold {
-				// Notify the chat about the message deletion
-				replyMessage, err := tgBot.SendMessage(ctx, &bot.SendMessageParams{
-					ChatID: update.Message.Chat.ID,
-					Text:   "Warning: This message will be deleted in 15 seconds due to high threat probability.",
-					ReplyParameters: &models.ReplyParameters{
-						MessageID: update.Message.ID,
-						ChatID:    update.Message.Chat.ID,
-					},
-				})
-				if err != nil {
-					log.Print("Failed to send warning message; error: ", err.Error())
-				}
-
-				// Run the deletion in a goroutine
-				go func() {
-					time.Sleep(15 * time.Second)
-
-					// Delete the original message
-					tgBot.DeleteMessage(ctx, &bot.DeleteMessageParams{
-						ChatID:    update.Message.Chat.ID,
-						MessageID: update.Message.ID,
-					})
-
-					// Delete the warning message
-					tgBot.DeleteMessage(ctx, &bot.DeleteMessageParams{
-						ChatID:    update.Message.Chat.ID,
-						MessageID: replyMessage.ID,
-					})
-				}()
-			}
-		}
-	}
+	// // Check if the message is from a group chat and contains the specified chat ID
+	// if update.Message.Chat.Type == "group" || update.Message.Chat.Type == "supergroup" {
+	// 	// Get the chat ID from the environment variable
+	// 	specifiedChatID := os.Getenv("CENSORED_CHAT_ID")
+	// 	if specifiedChatID == "" {
+	// 		log.Print("SPECIFIED_CHAT_ID environment variable is not set.")
+	// 		return
+	// 	}
+	//
+	// 	// Check if the chat ID matches the specified chat ID
+	// 	if strconv.FormatInt(update.Message.Chat.ID, 10) == specifiedChatID {
+	// 		// Prepare the JSON payload
+	// 		messagePayload := fmt.Sprintf(`{"message": "%s"}`, update.Message.Text)
+	//
+	// 		// Send the message to the specified localhost endpoint
+	// 		endpoint := os.Getenv("CUMCEN_ENDPOINT")
+	// 		if !strings.HasPrefix(endpoint, "http://") {
+	// 			endpoint = "http://" + endpoint
+	// 		}
+	// 		resp, err := http.Post(endpoint, "application/json", strings.NewReader(messagePayload))
+	// 		if err != nil {
+	// 			log.Print("Failed to send message to localhost; error: ", err.Error())
+	// 			return
+	// 		}
+	// 		defer resp.Body.Close()
+	//
+	// 		// Decode the response
+	// 		var response struct {
+	// 			ThreatProbability float64 `json:"threat_probability"`
+	// 		}
+	// 		if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+	// 			log.Print("Failed to decode response; error: ", err.Error())
+	// 			return
+	// 		}
+	//
+	// 		// Check the threat probability
+	// 		threshold, _ := strconv.ParseFloat(os.Getenv("THREAT_THRESHOLD"), 64)
+	// 		if response.ThreatProbability >= threshold {
+	// 			// Notify the chat about the message deletion
+	// 			replyMessage, err := tgBot.SendMessage(ctx, &bot.SendMessageParams{
+	// 				ChatID: update.Message.Chat.ID,
+	// 				Text:   "Warning: This message will be deleted in 15 seconds due to high threat probability.",
+	// 				ReplyParameters: &models.ReplyParameters{
+	// 					MessageID: update.Message.ID,
+	// 					ChatID:    update.Message.Chat.ID,
+	// 				},
+	// 			})
+	// 			if err != nil {
+	// 				log.Print("Failed to send warning message; error: ", err.Error())
+	// 			}
+	//
+	// 			// Run the deletion in a goroutine
+	// 			go func() {
+	// 				time.Sleep(15 * time.Second)
+	//
+	// 				// Delete the original message
+	// 				tgBot.DeleteMessage(ctx, &bot.DeleteMessageParams{
+	// 					ChatID:    update.Message.Chat.ID,
+	// 					MessageID: update.Message.ID,
+	// 				})
+	//
+	// 				// Delete the warning message
+	// 				tgBot.DeleteMessage(ctx, &bot.DeleteMessageParams{
+	// 					ChatID:    update.Message.Chat.ID,
+	// 					MessageID: replyMessage.ID,
+	// 				})
+	// 			}()
+	// 		}
+	// 	}
+	// }
 
 	if len(matches) > 0 {
 		replacedLinks := make([]string, len(matches))
